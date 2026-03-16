@@ -3,14 +3,49 @@
 ARCH ?= i386
 CROSS ?= i686-elf-
 
+# If i686-elf tools are missing, fall back to the commonly available x86_64-elf toolchain.
+ifeq ($(shell command -v $(CROSS)gcc >/dev/null 2>&1; echo $$?),1)
+ifneq ($(shell command -v x86_64-elf-gcc >/dev/null 2>&1; echo $$?),1)
+CROSS := x86_64-elf-
+endif
+endif
+
 CC ?= $(CROSS)gcc
 LD ?= $(CROSS)ld
 OBJCOPY ?= $(CROSS)objcopy
 NASM ?= nasm
+
+# If environment defaults force host compiler/linker names, switch to cross tools when available.
+ifeq ($(notdir $(CC)),cc)
+ifneq ($(shell command -v $(CROSS)gcc >/dev/null 2>&1; echo $$?),1)
+CC := $(CROSS)gcc
+endif
+endif
+ifeq ($(notdir $(LD)),ld)
+ifneq ($(shell command -v $(CROSS)ld >/dev/null 2>&1; echo $$?),1)
+LD := $(CROSS)ld
+endif
+endif
+
+# Fallbacks for hosts without a full cross toolchain (useful on macOS).
+ifeq ($(shell command -v $(LD) >/dev/null 2>&1; echo $$?),1)
+LD := ld.lld
+endif
+ifeq ($(shell command -v $(OBJCOPY) >/dev/null 2>&1; echo $$?),1)
+OBJCOPY := llvm-objcopy
+endif
 QEMU ?= qemu-system-$(ARCH)
 QEMU_PCSPK_FLAGS ?= -audiodev coreaudio,id=snd0 -machine pcspk-audiodev=snd0
 QEMU_LOG ?= $(BUILD_DIR)/qemu.log
 QEMU_TRACE_FLAGS ?= int,cpu_reset,guest_errors
+BOCHS ?= bochs
+BOCHSDBG ?= bochsdbg
+BOCHS_LOG ?= $(BUILD_DIR)/bochs.log
+BOCHS_DEBUG_LOG ?= $(BUILD_DIR)/bochsdbg.log
+BOCHSRC ?= $(BUILD_DIR)/bochsrc.txt
+BOCHS_SHARE ?= $(firstword $(wildcard /opt/homebrew/share/bochs /usr/local/share/bochs /usr/share/bochs))
+BOCHS_BIOS ?= $(BOCHS_SHARE)/BIOS-bochs-latest
+BOCHS_VGABIOS ?= $(BOCHS_SHARE)/VGABIOS-lgpl-latest
 GDB ?= gdb
 GDB_PORT ?= 1234
 DEBUG_QEMU_FLAGS ?= -S -no-reboot -no-shutdown
@@ -25,17 +60,17 @@ BOOT_SECTOR ?= $(BOOT_DIR)/boot.asm
 LINKER_SCRIPT ?= $(KERNEL_DIR)/linker.ld
 
 # Source discovery
-KERNEL_C_SRCS := $(wildcard $(KERNEL_DIR)/*.c)
-KERNEL_S_SRCS := $(wildcard $(KERNEL_DIR)/*.S)
-# Optional standalone boot asm modules to link into kernel. Keep empty by default
-# so helper includes like boot/puts.asm are not treated as linkable objects.
-BOOT_ELF_ASM_SRCS ?=
+KERNEL_C_SRCS := $(shell find $(KERNEL_DIR) -type f -name '*.c')
+KERNEL_S_SRCS := $(shell find $(KERNEL_DIR) -type f -name '*.S')
+# Standalone NASM module(s) linked into the kernel ELF.
+BOOT_ELF_ASM_SRCS ?= $(BOOT_DIR)/kernel_entry.asm
 
 KERNEL_C_OBJS := $(patsubst $(KERNEL_DIR)/%.c,$(BUILD_DIR)/kernel/%.o,$(KERNEL_C_SRCS))
 KERNEL_S_OBJS := $(patsubst $(KERNEL_DIR)/%.S,$(BUILD_DIR)/kernel/%.o,$(KERNEL_S_SRCS))
 BOOT_ELF_ASM_OBJS := $(patsubst $(BOOT_DIR)/%.asm,$(BUILD_DIR)/boot/%.o,$(BOOT_ELF_ASM_SRCS))
 
-KERNEL_OBJS := $(KERNEL_C_OBJS) $(KERNEL_S_OBJS) $(BOOT_ELF_ASM_OBJS)
+# Entry object MUST come first so _start lands at the load address.
+KERNEL_OBJS := $(BOOT_ELF_ASM_OBJS) $(KERNEL_C_OBJS) $(KERNEL_S_OBJS)
 
 ifneq ($(strip $(KERNEL_OBJS)),)
 HAS_KERNEL := 1
@@ -48,6 +83,7 @@ KERNEL_ELF := $(BUILD_DIR)/kernel.elf
 KERNEL_BIN := $(BUILD_DIR)/kernel.bin
 BOOT_BIN := $(BUILD_DIR)/boot.bin
 OS_IMAGE := $(BUILD_DIR)/os-image.bin
+KERNEL_LOAD_INC := $(BUILD_DIR)/kernel_load.inc
 USB_BS ?= 1m
 DISK ?=
 
@@ -57,10 +93,15 @@ IMAGE_PARTS += $(KERNEL_BIN)
 endif
 
 # Build flags
-CFLAGS ?= -m32 -ffreestanding -fno-pie -fno-stack-protector -nostdlib -nostdinc -Wall -Wextra -O2 -I$(INCLUDE_DIR)
-ASFLAGS_ELF ?= -f elf32 -I$(BOOT_DIR)/ -I$(INCLUDE_DIR)/
-ASFLAGS_BIN ?= -f bin -I$(BOOT_DIR)/ -I$(INCLUDE_DIR)/
-LDFLAGS_BASE := -m elf_i386 -nostdlib
+CFLAGS ?= -m32 -ffreestanding -fno-pie -fno-stack-protector -nostdlib -nostdinc -Wall -Wextra -O2 -mno-mmx -mno-sse -mno-sse2 -I$(INCLUDE_DIR)
+ASFLAGS_ELF ?= -f elf32 -I$(BOOT_DIR)/ -I$(INCLUDE_DIR)/ -I$(BUILD_DIR)/
+ASFLAGS_BIN ?= -f bin -I$(BOOT_DIR)/ -I$(INCLUDE_DIR)/ -I$(BUILD_DIR)/
+LDFLAGS_BASE := -m elf_i386
+
+# On macOS, cc is usually clang; force an i386-ELF target for freestanding output.
+ifneq ($(strip $(shell $(CC) --version 2>/dev/null | head -n 1 | grep -Ei "clang|Apple clang")),)
+CFLAGS += --target=i386-elf
+endif
 
 ifeq ($(wildcard $(LINKER_SCRIPT)),)
 LDFLAGS := $(LDFLAGS_BASE)
@@ -68,7 +109,7 @@ else
 LDFLAGS := $(LDFLAGS_BASE) -T $(LINKER_SCRIPT)
 endif
 
-.PHONY: all run run-speaker debug debug-gdb qemu-log qemu-log-check clean help usb-list usb-write
+.PHONY: all run run-speaker debug debug-gdb qemu-log qemu-log-check bochs bochsdbg clean help usb-list usb-write
 
 all: $(OS_IMAGE)
 
@@ -98,7 +139,18 @@ $(KERNEL_ELF): $(KERNEL_OBJS) | $(BUILD_DIR)
 $(KERNEL_BIN): $(KERNEL_ELF) | $(BUILD_DIR)
 	$(OBJCOPY) -O binary $< $@
 
-$(BOOT_BIN): $(BOOT_SECTOR) | $(BUILD_DIR)
+ifeq ($(HAS_KERNEL),1)
+$(KERNEL_LOAD_INC): $(KERNEL_BIN) | $(BUILD_DIR)
+	@size=$$(wc -c < "$(KERNEL_BIN)"); \
+	sectors=$$(((size + 511) / 512)); \
+	if [ $$sectors -eq 0 ]; then sectors=1; fi; \
+	printf '%%define KERNEL_LOAD_SECTORS %s\n' "$$sectors" > $@
+else
+$(KERNEL_LOAD_INC): | $(BUILD_DIR)
+	@printf '%%define KERNEL_LOAD_SECTORS 0\n' > $@
+endif
+
+$(BOOT_BIN): $(BOOT_SECTOR) $(KERNEL_LOAD_INC) | $(BUILD_DIR)
 	$(NASM) $(ASFLAGS_BIN) $< -o $@
 
 $(OS_IMAGE): $(IMAGE_PARTS) | $(BUILD_DIR)
@@ -107,6 +159,28 @@ $(OS_IMAGE): $(IMAGE_PARTS) | $(BUILD_DIR)
 		echo "Built boot-only image (no kernel sources detected)."; \
 	fi
 	@echo "Built $(OS_IMAGE)"
+
+$(BOCHSRC): $(OS_IMAGE) | $(BUILD_DIR)
+	@if [ ! -f "$(BOCHS_BIOS)" ] || [ ! -f "$(BOCHS_VGABIOS)" ]; then \
+		echo "Bochs BIOS files not found."; \
+		echo "Set BOCHS_BIOS=... and BOCHS_VGABIOS=... or install bochs via Homebrew."; \
+		exit 1; \
+	fi
+	@printf '%s\n' \
+		'megs: 32' \
+		'romimage: file=$(BOCHS_BIOS)' \
+		'vgaromimage: file=$(BOCHS_VGABIOS)' \
+		'boot: disk' \
+		'log: $(BOCHS_LOG)' \
+		'panic: action=ask' \
+		'error: action=report' \
+		'info: action=report' \
+		'ata0-master: type=disk, mode=flat, path="$(abspath $(OS_IMAGE))", cylinders=1, heads=16, spt=63' \
+		'clock: sync=realtime, time0=local' \
+		'mouse: enabled=0' \
+		'keyboard: type=mf' \
+		'port_e9_hack: enabled=1' \
+		> $@
 
 run: $(OS_IMAGE)
 	$(QEMU) -drive format=raw,file=$(OS_IMAGE)
@@ -123,6 +197,14 @@ debug-gdb:
 qemu-log: $(OS_IMAGE)
 	@rm -f $(QEMU_LOG)
 	$(QEMU) -drive format=raw,file=$(OS_IMAGE) -no-reboot -no-shutdown -d $(QEMU_TRACE_FLAGS) -D $(QEMU_LOG)
+
+bochs: $(BOCHSRC)
+	@command -v $(BOCHS) >/dev/null 2>&1 || { echo "Bochs not found. Install it first, for example: brew install bochs"; exit 1; }
+	$(BOCHS) -q -f $(BOCHSRC)
+
+bochsdbg: $(BOCHSRC)
+	@command -v $(BOCHSDBG) >/dev/null 2>&1 || { echo "bochsdbg not found. Install it first, for example: brew install bochs"; exit 1; }
+	$(BOCHSDBG) -q -f $(BOCHSRC)
 
 qemu-log-check:
 	@if [ ! -f "$(QEMU_LOG)" ]; then \
@@ -182,6 +264,8 @@ help:
 	@echo "  debug-gdb - Attach GDB to the QEMU gdb server"
 	@echo "  qemu-log - Run QEMU and write trace log to QEMU_LOG"
 	@echo "  qemu-log-check - Scan QEMU_LOG for triple-fault signatures"
+	@echo "  bochs  - Run the image in Bochs"
+	@echo "  bochsdbg - Run the image in the Bochs debugger"
 	@echo "  usb-list  - List removable disks"
 	@echo "  usb-write - Write image to USB (requires DISK=... CONFIRM=YES)"
 	@echo "  clean  - Remove build artifacts"
@@ -192,6 +276,11 @@ help:
 	@echo "  NASM=$(NASM)"
 	@echo "  QEMU_LOG=$(QEMU_LOG)"
 	@echo "  QEMU_TRACE_FLAGS=$(QEMU_TRACE_FLAGS)"
+	@echo "  BOCHS=$(BOCHS)"
+	@echo "  BOCHSDBG=$(BOCHSDBG)"
+	@echo "  BOCHS_BIOS=$(BOCHS_BIOS)"
+	@echo "  BOCHS_VGABIOS=$(BOCHS_VGABIOS)"
+	@echo "  BOCHSRC=$(BOCHSRC)"
 	@echo "  GDB=$(GDB)"
 	@echo "  GDB_PORT=$(GDB_PORT)"
 	@echo "  DEBUG_QEMU_FLAGS=$(DEBUG_QEMU_FLAGS)"

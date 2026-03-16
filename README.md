@@ -101,16 +101,17 @@ A learning kernel. Scope is intentionally tiny — no userspace, no threads, no 
 - [x] Confirm 32-bit mode in QEMU
 
 ## Kernel entry
-- [ ] Basic linker script (ELF32)
-- [ ] Makefile wiring bootloader → kernel
-- [ ] `kernel_main()` in C
-- [ ] Bootloader hands off execution to kernel
+- [x] Basic linker script (ELF32)
+- [x] Makefile wiring bootloader → kernel
+- [x] `kernel_main()` in C
+- [x] Bootloader hands off execution to kernel
 
 ## VGA
-- [ ] Write directly to 0xB8000
-- [ ] `print_string()` / `print_char()`
-- [ ] Clear screen
-- [ ] Basic color support
+- [x] Write directly to 0xB8000
+- [x] `print_string()` / `print_char()`
+- [x] Clear screen
+- [x] Scrolling
+- [x] Basic color support
 
 ## IRQ
 - [ ] IDT setup
