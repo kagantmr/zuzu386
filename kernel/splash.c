@@ -3,8 +3,7 @@
 #include "snprintf.h"
 #include "splash.h"
 
-#define C_WHITE ""
-#define C_RESET ""
+#define NONE ""
 
 #define SPLASH_PANIC_COLOR VGA_COLOR(VGA_COLOR_WHITE, VGA_COLOR_BLACK)
 #define SPLASH_LOGO_COLOR VGA_COLOR(VGA_COLOR_LIGHT_BROWN, VGA_COLOR_BLACK)
@@ -15,7 +14,7 @@ typedef struct art_layout {
     uint8_t width;
 } art_layout_t;
 
-static int line_leading_spaces(const char *line) {
+static int line_leading_NONEs(const char *line) {
     int count = 0;
 
     while (line[count] == ' ') {
@@ -46,15 +45,15 @@ static art_layout_t draw_centered_art(const char *const *lines, int line_count, 
     art_layout_t layout = {0, 0};
 
     for (int i = 0; i < line_count; i++) {
-        int leading_spaces = line_leading_spaces(lines[i]);
+        int leading_NONEs = line_leading_NONEs(lines[i]);
         int right_edge = line_right_edge(lines[i]);
 
         if (right_edge == 0) {
             continue;
         }
 
-        if (leading_spaces < left_trim) {
-            left_trim = leading_spaces;
+        if (leading_NONEs < left_trim) {
+            left_trim = leading_NONEs;
         }
 
         if (right_edge > max_right_edge) {
@@ -100,17 +99,17 @@ void splash(void) {
     art_layout_t logo_layout;
 
     static const char* const panic_logo[] = {
-        "      " C_WHITE "@@@@@@" C_RESET,
-        "        " C_WHITE "%@@" C_RESET "         " C_WHITE "%@@@  @" C_RESET,
-        "       " C_WHITE "@@" C_RESET "           " C_WHITE "@@" C_RESET "   " C_WHITE "@@" C_RESET,
-        "     " C_WHITE "@@" C_RESET "             " C_WHITE "@" C_RESET "    " C_WHITE "@=" C_RESET,
-        "    " C_WHITE "@@@@@@@@@@@@@@" C_RESET " " C_WHITE "@@" C_RESET "   " C_WHITE "@@" C_RESET,
-        "        " C_WHITE "@@" C_RESET "          " C_WHITE "@@@@" C_RESET,
-        "        " C_WHITE "@@" C_RESET "             " C_WHITE "@" C_RESET,
-        "        " C_WHITE "@@  %@@@@@@@  *@" C_RESET,
-        "        " C_WHITE "@@  @" C_RESET "      " C_WHITE "@@ @@" C_RESET,
-        "        " C_WHITE "@@  @" C_RESET "      " C_WHITE "@@ @@" C_RESET,
-        "         " C_WHITE "@@@" C_RESET "        " C_WHITE "@@@" C_RESET,
+        "      " NONE "@@@@@@" NONE,
+        "        " NONE "%@@" NONE "         " NONE "%@@@  @" NONE,
+        "       " NONE "@@" NONE "           " NONE "@@" NONE "   " NONE "@@" NONE,
+        "     " NONE "@@" NONE "             " NONE "@" NONE "    " NONE "@=" NONE,
+        "    " NONE "@@@@@@@@@@@@@@" NONE " " NONE "@@" NONE "   " NONE "@@" NONE,
+        "        " NONE "@@" NONE "          " NONE "@@@@" NONE,
+        "        " NONE "@@" NONE "             " NONE "@" NONE,
+        "        " NONE "@@  %@@@@@@@  *@" NONE,
+        "        " NONE "@@  @" NONE "      " NONE "@@ @@" NONE,
+        "        " NONE "@@  @" NONE "      " NONE "@@ @@" NONE,
+        "         " NONE "@@@" NONE "        " NONE "@@@" NONE,
     };
 
     static const char* const logo[] = {

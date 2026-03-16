@@ -9,5 +9,6 @@ _Noreturn void kmain(void) {
     vga_clear();
     kprintf_init(vga_putc);
     splash();
+    kprintf("Welcome to Zuzu386!\n");
     while (1);
 }
