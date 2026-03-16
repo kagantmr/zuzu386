@@ -94,11 +94,11 @@ A learning kernel. Scope is intentionally tiny — no userspace, no threads, no 
 - [x] Boot in QEMU successfully
 
 ## Protected mode entry
-- [ ] Define and load a basic GDT (code + data segments)
-- [ ] Flip the PE bit in cr0
-- [ ] Far jump to flush pipeline
-- [ ] Reload segment registers
-- [ ] Confirm 32-bit mode in QEMU
+- [x] Define and load a basic GDT (code + data segments)
+- [x] Flip the PE bit in cr0
+- [x] Far jump to flush pipeline
+- [x] Reload segment registers
+- [x] Confirm 32-bit mode in QEMU
 
 ## Kernel entry
 - [ ] Basic linker script (ELF32)
