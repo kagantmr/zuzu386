@@ -22,7 +22,9 @@ LINKER_SCRIPT ?= $(KERNEL_DIR)/linker.ld
 # Source discovery
 KERNEL_C_SRCS := $(wildcard $(KERNEL_DIR)/*.c)
 KERNEL_S_SRCS := $(wildcard $(KERNEL_DIR)/*.S)
-BOOT_ELF_ASM_SRCS := $(filter-out $(BOOT_SECTOR),$(wildcard $(BOOT_DIR)/*.asm))
+# Optional standalone boot asm modules to link into kernel. Keep empty by default
+# so helper includes like boot/puts.asm are not treated as linkable objects.
+BOOT_ELF_ASM_SRCS ?=
 
 KERNEL_C_OBJS := $(patsubst $(KERNEL_DIR)/%.c,$(BUILD_DIR)/kernel/%.o,$(KERNEL_C_SRCS))
 KERNEL_S_OBJS := $(patsubst $(KERNEL_DIR)/%.S,$(BUILD_DIR)/kernel/%.o,$(KERNEL_S_SRCS))
@@ -51,8 +53,8 @@ endif
 
 # Build flags
 CFLAGS ?= -m32 -ffreestanding -fno-pie -fno-stack-protector -nostdlib -nostdinc -Wall -Wextra -O2 -I$(INCLUDE_DIR)
-ASFLAGS_ELF ?= -f elf32
-ASFLAGS_BIN ?= -f bin
+ASFLAGS_ELF ?= -f elf32 -I$(BOOT_DIR)/ -I$(INCLUDE_DIR)/
+ASFLAGS_BIN ?= -f bin -I$(BOOT_DIR)/ -I$(INCLUDE_DIR)/
 LDFLAGS_BASE := -m elf_i386 -nostdlib
 
 ifeq ($(wildcard $(LINKER_SCRIPT)),)

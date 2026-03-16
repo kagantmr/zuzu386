@@ -93,7 +93,7 @@ A learning kernel. Scope is intentionally tiny — no userspace, no threads, no 
 - [ ] PIC (8259) remapping
 - [ ] Timer interrupt (IRQ0)
 
-## Keyboar
+## Keyboard
 - [ ] Keyboard interrupt handler (IRQ1)
 - [ ] Scancode → ASCII mapping
 - [ ] Echo typed characters to screen
