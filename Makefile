@@ -9,6 +9,11 @@ OBJCOPY ?= $(CROSS)objcopy
 NASM ?= nasm
 QEMU ?= qemu-system-$(ARCH)
 QEMU_PCSPK_FLAGS ?= -audiodev coreaudio,id=snd0 -machine pcspk-audiodev=snd0
+QEMU_LOG ?= $(BUILD_DIR)/qemu.log
+QEMU_TRACE_FLAGS ?= int,cpu_reset,guest_errors
+GDB ?= gdb
+GDB_PORT ?= 1234
+DEBUG_QEMU_FLAGS ?= -S -no-reboot -no-shutdown
 
 BUILD_DIR := build
 BOOT_DIR := boot
@@ -63,7 +68,7 @@ else
 LDFLAGS := $(LDFLAGS_BASE) -T $(LINKER_SCRIPT)
 endif
 
-.PHONY: all run run-speaker debug clean help usb-list usb-write
+.PHONY: all run run-speaker debug debug-gdb qemu-log qemu-log-check clean help usb-list usb-write
 
 all: $(OS_IMAGE)
 
@@ -110,7 +115,26 @@ run-speaker: $(OS_IMAGE)
 	$(QEMU) $(QEMU_PCSPK_FLAGS) -drive format=raw,file=$(OS_IMAGE)
 
 debug: $(OS_IMAGE)
-	$(QEMU) -drive format=raw,file=$(OS_IMAGE) -s -S
+	$(QEMU) -drive format=raw,file=$(OS_IMAGE) -gdb tcp::$(GDB_PORT) $(DEBUG_QEMU_FLAGS)
+
+debug-gdb:
+	$(GDB) -ex "set architecture i8086" -ex "target remote :$(GDB_PORT)"
+
+qemu-log: $(OS_IMAGE)
+	@rm -f $(QEMU_LOG)
+	$(QEMU) -drive format=raw,file=$(OS_IMAGE) -no-reboot -no-shutdown -d $(QEMU_TRACE_FLAGS) -D $(QEMU_LOG)
+
+qemu-log-check:
+	@if [ ! -f "$(QEMU_LOG)" ]; then \
+		echo "No log file found at $(QEMU_LOG). Run 'make qemu-log' first."; \
+		exit 1; \
+	fi
+	@if grep -Eqi 'triple[ -]?fault' $(QEMU_LOG); then \
+		echo "Triple-fault signature found in $(QEMU_LOG)."; \
+		grep -Ein 'triple[ -]?fault' $(QEMU_LOG); \
+	else \
+		echo "No explicit triple-fault signature found in $(QEMU_LOG)."; \
+	fi
 
 usb-list:
 	@echo "Available removable disks:"
@@ -154,7 +178,10 @@ help:
 	@echo "  all    - Build bootable image ($(OS_IMAGE))"
 	@echo "  run    - Build and run in QEMU"
 	@echo "  run-speaker - Run in QEMU with PC speaker audio enabled"
-	@echo "  debug  - Run in QEMU with gdb stub (-s -S)"
+	@echo "  debug  - Run in QEMU paused with gdb server on GDB_PORT"
+	@echo "  debug-gdb - Attach GDB to the QEMU gdb server"
+	@echo "  qemu-log - Run QEMU and write trace log to QEMU_LOG"
+	@echo "  qemu-log-check - Scan QEMU_LOG for triple-fault signatures"
 	@echo "  usb-list  - List removable disks"
 	@echo "  usb-write - Write image to USB (requires DISK=... CONFIRM=YES)"
 	@echo "  clean  - Remove build artifacts"
@@ -163,6 +190,11 @@ help:
 	@echo "  CROSS=$(CROSS)"
 	@echo "  ARCH=$(ARCH)"
 	@echo "  NASM=$(NASM)"
+	@echo "  QEMU_LOG=$(QEMU_LOG)"
+	@echo "  QEMU_TRACE_FLAGS=$(QEMU_TRACE_FLAGS)"
+	@echo "  GDB=$(GDB)"
+	@echo "  GDB_PORT=$(GDB_PORT)"
+	@echo "  DEBUG_QEMU_FLAGS=$(DEBUG_QEMU_FLAGS)"
 	@echo "  QEMU_PCSPK_FLAGS=$(QEMU_PCSPK_FLAGS)"
 	@echo "  BOOT_SECTOR=$(BOOT_SECTOR)"
 	@echo "  LINKER_SCRIPT=$(LINKER_SCRIPT)"

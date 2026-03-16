@@ -51,6 +51,31 @@ make run
 qemu-system-i386 -drive format=raw,file=build/boot.img
 ```
 
+## Debugging (QEMU + GDB)
+
+In terminal 1:
+
+```sh
+make debug
+```
+
+In terminal 2:
+
+```sh
+make debug-gdb
+```
+
+Defaults:
+- GDB server port: `1234`
+- Real-mode architecture preset: `i8086`
+
+Override port if needed:
+
+```sh
+make debug GDB_PORT=9000
+make debug-gdb GDB_PORT=9000
+```
+
 ---
 
 ## Status
