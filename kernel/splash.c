@@ -5,7 +5,7 @@
 
 #define NONE ""
 
-#define SPLASH_PANIC_COLOR VGA_COLOR(VGA_COLOR_WHITE, VGA_COLOR_BLACK)
+#define SPLASH_COLOR VGA_COLOR(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK)
 #define SPLASH_LOGO_COLOR VGA_COLOR(VGA_COLOR_LIGHT_BROWN, VGA_COLOR_BLACK)
 #define SPLASH_RULE_COLOR VGA_COLOR(VGA_COLOR_DARK_GREY, VGA_COLOR_BLACK)
 
@@ -121,7 +121,7 @@ void splash(void) {
 
     vga_clear();
 
-    draw_centered_art(panic_logo, 11, 2, SPLASH_PANIC_COLOR);
+    draw_centered_art(panic_logo, 11, 2, SPLASH_COLOR);
     logo_layout = draw_centered_art(logo, 4, 14, SPLASH_LOGO_COLOR);
 
     vga_set_color(SPLASH_RULE_COLOR);
