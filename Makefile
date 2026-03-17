@@ -3,10 +3,14 @@
 ARCH ?= i386
 CROSS ?= i686-elf-
 
-# If i686-elf tools are missing, fall back to the commonly available x86_64-elf toolchain.
-ifeq ($(shell command -v $(CROSS)gcc >/dev/null 2>&1; echo $$?),1)
-ifneq ($(shell command -v x86_64-elf-gcc >/dev/null 2>&1; echo $$?),1)
+# If i686-elf tools are missing, try common alternatives.
+ifneq ($(shell command -v $(CROSS)gcc >/dev/null 2>&1; echo $$?),0)
+ifeq ($(shell command -v i686-linux-gnu-gcc >/dev/null 2>&1; echo $$?),0)
+CROSS := i686-linux-gnu-
+else
+ifeq ($(shell command -v x86_64-elf-gcc >/dev/null 2>&1; echo $$?),0)
 CROSS := x86_64-elf-
+endif
 endif
 endif
 
@@ -15,23 +19,40 @@ LD ?= $(CROSS)ld
 OBJCOPY ?= $(CROSS)objcopy
 NASM ?= nasm
 
+# If CC/LD/OBJCOPY are set externally to missing tools, recover with the resolved CROSS prefix.
+ifneq ($(shell command -v $(CC) >/dev/null 2>&1; echo $$?),0)
+ifeq ($(shell command -v $(CROSS)gcc >/dev/null 2>&1; echo $$?),0)
+CC := $(CROSS)gcc
+endif
+endif
+ifneq ($(shell command -v $(LD) >/dev/null 2>&1; echo $$?),0)
+ifeq ($(shell command -v $(CROSS)ld >/dev/null 2>&1; echo $$?),0)
+LD := $(CROSS)ld
+endif
+endif
+ifneq ($(shell command -v $(OBJCOPY) >/dev/null 2>&1; echo $$?),0)
+ifeq ($(shell command -v $(CROSS)objcopy >/dev/null 2>&1; echo $$?),0)
+OBJCOPY := $(CROSS)objcopy
+endif
+endif
+
 # If environment defaults force host compiler/linker names, switch to cross tools when available.
 ifeq ($(notdir $(CC)),cc)
-ifneq ($(shell command -v $(CROSS)gcc >/dev/null 2>&1; echo $$?),1)
+ifeq ($(shell command -v $(CROSS)gcc >/dev/null 2>&1; echo $$?),0)
 CC := $(CROSS)gcc
 endif
 endif
 ifeq ($(notdir $(LD)),ld)
-ifneq ($(shell command -v $(CROSS)ld >/dev/null 2>&1; echo $$?),1)
+ifeq ($(shell command -v $(CROSS)ld >/dev/null 2>&1; echo $$?),0)
 LD := $(CROSS)ld
 endif
 endif
 
 # Fallbacks for hosts without a full cross toolchain (useful on macOS).
-ifeq ($(shell command -v $(LD) >/dev/null 2>&1; echo $$?),1)
+ifneq ($(shell command -v $(LD) >/dev/null 2>&1; echo $$?),0)
 LD := ld.lld
 endif
-ifeq ($(shell command -v $(OBJCOPY) >/dev/null 2>&1; echo $$?),1)
+ifneq ($(shell command -v $(OBJCOPY) >/dev/null 2>&1; echo $$?),0)
 OBJCOPY := llvm-objcopy
 endif
 QEMU ?= qemu-system-$(ARCH)
@@ -84,7 +105,7 @@ KERNEL_BIN := $(BUILD_DIR)/kernel.bin
 BOOT_BIN := $(BUILD_DIR)/boot.bin
 OS_IMAGE := $(BUILD_DIR)/os-image.bin
 KERNEL_LOAD_INC := $(BUILD_DIR)/kernel_load.inc
-USB_BS ?= 1m
+USB_BS ?= 1M
 DISK ?=
 
 IMAGE_PARTS := $(BOOT_BIN)
