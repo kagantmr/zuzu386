@@ -1,4 +1,5 @@
 #include "../vga/vga.h"
+#include "../sound/speaker.h"
 
 _Noreturn void panic(const char *message) {
     volatile uint16_t *const vga = (volatile uint16_t *)0xB8000;
@@ -14,6 +15,8 @@ _Noreturn void panic(const char *message) {
     vga_puts("PANIC MESSAGE: ");
     vga_puts(message);
     vga_puts("\n\nPlease restart the system.");
+    speaker_beep(440, 4000); // Beep at A4 for 1 second to indicate panic
+    speaker_stop();
     
     while (1);
 }
