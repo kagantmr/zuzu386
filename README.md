@@ -28,15 +28,28 @@ This kernel serves as a learning project for x86 architecture, focusing on the b
 
 ```
 zuzu386/
+├── Makefile
+├── README.md
 ├── arch/
 │   └── x86/
-│       ├── boot/    # x86 bootloader (NASM)
+│       ├── boot/            # bootloader assembly
+│       ├── interrupt/       # IDT/IRQ definitions
+│       ├── pic/             # 8259 PIC control
 │       └── linker.ld
-├── kernel/      # kernel C code
-├── include/     # headers
-├── scripts/     # helper tooling
-├── build/       # compiled output (gitignored)
-└── Makefile
+├── include/                 # freestanding C headers
+├── kernel/
+│   ├── core/                # panic and core routines
+│   ├── isr/                 # CPU exception handlers
+│   ├── keyboard/
+│   ├── libk/                # minimal libc-like routines
+│   ├── music/
+│   ├── sound/
+│   ├── timer/
+│   ├── vga/
+│   ├── main.c
+│   └── main.h
+├── midi/
+└── scripts/
 ```
 
 ---

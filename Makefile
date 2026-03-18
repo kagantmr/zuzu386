@@ -73,7 +73,7 @@ DEBUG_QEMU_FLAGS ?= -S -no-reboot -no-shutdown
 
 BUILD_DIR := build
 ARCH_DIR := arch/x86
-ARCH_SRC_DIR := arch
+ARCH_SRC_DIR := $(ARCH_DIR)
 BOOT_DIR := $(ARCH_DIR)/boot
 KERNEL_DIR := kernel
 INCLUDE_DIR := include
@@ -120,7 +120,7 @@ IMAGE_PARTS += $(KERNEL_BIN)
 endif
 
 # Build flags
-CFLAGS ?= -m32 -mgeneral-regs-only -ffreestanding -fno-pie -fno-stack-protector -nostdlib -nostdinc -Wall -Wextra -O2 -mno-mmx -mno-sse -mno-sse2 -I$(INCLUDE_DIR)
+CFLAGS ?= -m32 -mgeneral-regs-only -ffreestanding -fno-pie -fno-stack-protector -nostdlib -nostdinc -Wall -Wextra -O2 -mno-mmx -mno-sse -mno-sse2 -I. -I$(INCLUDE_DIR) -I$(KERNEL_DIR)
 ASFLAGS_ELF ?= -f elf32 -I$(BOOT_DIR)/ -I$(INCLUDE_DIR)/ -I$(BUILD_DIR)/
 ASFLAGS_BIN ?= -f bin -I$(BOOT_DIR)/ -I$(INCLUDE_DIR)/ -I$(BUILD_DIR)/
 LDFLAGS_BASE := -m elf_i386
@@ -291,7 +291,6 @@ help:
 	@echo "Targets:"
 	@echo "  all    - Build bootable image ($(OS_IMAGE))"
 	@echo "  run    - Build and run in QEMU"
-	@echo "  run-speaker - Run in QEMU with PC speaker audio enabled"
 	@echo "  debug  - Run in QEMU paused with gdb server on GDB_PORT"
 	@echo "  debug-gdb - Attach GDB to the QEMU gdb server"
 	@echo "  qemu-log - Run QEMU and write trace log to QEMU_LOG"

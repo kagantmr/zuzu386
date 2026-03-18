@@ -1,8 +1,8 @@
-#ifndef ISR_EXC_H
-#define ISR_EXC_H
+#ifndef ISR_EXCEPTIONS_H
+#define ISR_EXCEPTIONS_H
 
 #include "stdint.h"
-#include "../arch/irq/irq.h"
+#include "arch/x86/interrupt/irq.h"
 
 __attribute__((interrupt)) void isr_divide_by_zero(interrupt_frame_t *frame); // vector 0
 __attribute__((interrupt)) void isr_invalid_opcode(interrupt_frame_t *frame); // vector 6

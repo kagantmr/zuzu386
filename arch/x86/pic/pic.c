@@ -1,5 +1,5 @@
 #include "pic.h"
-#include "../../include/io.h"
+#include "io.h"
 
 void pic_remap(void)
 {

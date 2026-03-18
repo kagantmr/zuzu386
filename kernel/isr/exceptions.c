@@ -1,5 +1,5 @@
-#include "isr_exc.h"
-#include "../core/panic.h"
+#include "exceptions.h"
+#include "core/panic.h"
 
 __attribute__((interrupt))
 void isr_divide_by_zero(interrupt_frame_t *frame) {

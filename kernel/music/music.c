@@ -1,5 +1,5 @@
 #include "music.h"
-#include "../sound/speaker.h"
+#include "sound/speaker.h"
 
 void play_note(const note_t *note) {
     uint32_t duration_ms = (60000 / 120) * (4 / note->duration); // Assuming tempo of 120 BPM

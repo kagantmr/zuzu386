@@ -1,5 +1,5 @@
-#include "../vga/vga.h"
-#include "../sound/speaker.h"
+#include "vga/vga.h"
+#include "sound/speaker.h"
 #include "string.h"
 #include "stdarg.h"
 

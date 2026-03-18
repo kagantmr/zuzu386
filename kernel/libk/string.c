@@ -1,4 +1,4 @@
-#include "../../include/string.h"
+#include "string.h"
 #include "stdint.h"
 #include "convert.h"
 

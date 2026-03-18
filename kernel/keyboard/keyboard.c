@@ -1,7 +1,7 @@
 #include "keyboard.h"
-#include "../../arch/pic/pic.h"
-#include "../../arch/irq/irq.h"
-#include "../../arch/irq/idt.h"
+#include "arch/x86/pic/pic.h"
+#include "arch/x86/interrupt/irq.h"
+#include "arch/x86/interrupt/idt.h"
 #include "io.h"
 #include "kprintf.h"
 

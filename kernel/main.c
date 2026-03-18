@@ -1,4 +1,4 @@
-#include "kmain.h"
+#include "main.h"
 #include "kprintf.h"
 #include "snprintf.h"
 #include "string.h"
@@ -8,11 +8,11 @@
 #include "version.h"
 #include "sound/speaker.h"
 #include "music/music.h"
-#include "../arch/irq/idt.h"
+#include "arch/x86/interrupt/idt.h"
 #include "timer/timer.h"    
 #include "keyboard/keyboard.h"  
-#include "isr/isr_exc.h"
-#include "../arch/pic/pic.h"
+#include "isr/exceptions.h"
+#include "arch/x86/pic/pic.h"
 
 void play_zuzu(void) {
     static const note_t notes[] = {
