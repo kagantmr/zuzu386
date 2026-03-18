@@ -3,6 +3,7 @@
 
 #include "stdint.h"
 
+
 typedef struct {
     uint16_t offset_low;   // Lower 16 bits of handler function address
     uint16_t selector;     // Code segment selector in GDT

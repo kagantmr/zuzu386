@@ -120,13 +120,13 @@ A learning kernel. Scope is intentionally tiny — no userspace, no threads, no 
 ## IRQ
 - [x] IDT setup
 - [x] Basic exception handlers (divide by zero, GPF, etc.)
-- [ ] PIC (8259) remapping
-- [ ] Timer interrupt (IRQ0)
+- [x] PIC (8259) remapping
+- [x] Timer interrupt (IRQ0)
 
 ## Keyboard
-- [ ] Keyboard interrupt handler (IRQ1)
-- [ ] Scancode → ASCII mapping
-- [ ] Echo typed characters to screen
+- [x] Keyboard interrupt handler (IRQ1)
+- [x] Scancode → ASCII mapping
+- [x] Echo typed characters to screen
 
 ## If I'm really ambitious... (which I am probably)
 - [ ] Tiny input loop (read a command, respond)

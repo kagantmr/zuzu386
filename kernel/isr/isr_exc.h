@@ -2,12 +2,7 @@
 #define ISR_EXC_H
 
 #include "stdint.h"
-
-typedef struct {
-    uint32_t ip;     // instruction pointer — where you were
-    uint32_t cs;     // code segment
-    uint32_t flags;  // eflags
-} interrupt_frame_t;
+#include "../arch/irq/irq.h"
 
 __attribute__((interrupt)) void isr_divide_by_zero(interrupt_frame_t *frame); // vector 0
 __attribute__((interrupt)) void isr_invalid_opcode(interrupt_frame_t *frame); // vector 6

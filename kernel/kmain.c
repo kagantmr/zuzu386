@@ -9,6 +9,8 @@
 #include "sound/speaker.h"
 #include "music/music.h"
 #include "../arch/irq/idt.h"
+#include "timer/timer.h"    
+#include "keyboard/keyboard.h"  
 #include "isr/isr_exc.h"
 #include "../arch/pic/pic.h"
 
@@ -61,16 +63,16 @@ _Noreturn void kmain(void) {
     i686_idt_enablehandler(255); 
 
     pic_remap();
-
-    
-    i686_idt_set_handler(33, (uint32_t)isr_unhandled, 0x08, IDT_FLAG_GATE_32INT | IDT_FLAG_RING0 | IDT_FLAG_PRESENT);
-    i686_idt_enablehandler(33);
-
-    pic_unmask_irq(1); // Unmask keyboard IRQ (IRQ1)
-
-    __asm__ volatile ("sti"); // Enable interrupts
+    timer_init(100); // 100 Hz timer frequency
     kprintf("Welcome to Zuzu386 (version %s)!\n", Z386_VERSION);
     //__asm__ volatile ("int $0"); // Controlled exception test: divide-by-zero vector.
-    
-    while (1);
+    keyboard_init();
+
+    __asm__ volatile ("sti"); // Enable interrupts
+    while (1) {
+    if (keyboard_haschar()) {
+        char c = keyboard_getchar();
+        vga_putc(c);
+    }
+}
 }

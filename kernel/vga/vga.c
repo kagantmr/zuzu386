@@ -12,6 +12,14 @@ static inline void vga_outb(uint16_t port, uint8_t value) {
     __asm__ volatile ("outb %0, %1" : : "a"(value), "Nd"(port));
 }
 
+static void vga_scroll(void) {
+    for (int i = 0; i < (VGA_ROWS - 1) * VGA_COLS; i++)
+        VGA_BUFFER[i] = VGA_BUFFER[i + VGA_COLS];
+    for (unsigned short i = (VGA_ROWS - 1) * VGA_COLS; i < VGA_ROWS * VGA_COLS; i++)
+        VGA_BUFFER[i] = 0x0700 | ' ';
+    cursor = (VGA_ROWS - 1) * VGA_COLS;
+}
+
 static void vga_sync_cursor(void) {
     vga_outb(0x3D4, 0x0F);
     vga_outb(0x3D5, (uint8_t)(cursor & 0xFF));
@@ -27,30 +35,22 @@ void vga_clear(void) {
 }
 
 void vga_putc(char c) {
-    if (cursor >= 80 * 25) {
-        // cursor = 0; abandon the old ways
-        // scroll up by one line
-        memmove((void*)VGA_BUFFER, (const void*)(VGA_BUFFER + 80), (VGA_ROWS - 1) * VGA_COLS * sizeof(uint16_t));
-        // clear the last line
-        for (unsigned short i = (VGA_ROWS - 1) * VGA_COLS; i < VGA_ROWS * VGA_COLS; i++)
-            VGA_BUFFER[i] = 0x0700 | ' ';
-        cursor = (VGA_ROWS - 1) * VGA_COLS;
-    }
-
     if (c == '\n') {
         cursor = (unsigned short)(((cursor / 80) + 1) * 80);
-        // Check bounds after newline in case we're now at/past the end
-        if (cursor >= 80 * 25) {
-            memmove((void*)VGA_BUFFER, (const void*)(VGA_BUFFER + 80), (VGA_ROWS - 1) * VGA_COLS * sizeof(uint16_t));
-            for (unsigned short i = (VGA_ROWS - 1) * VGA_COLS; i < VGA_ROWS * VGA_COLS; i++)
-                VGA_BUFFER[i] = 0x0700 | ' ';
-            cursor = (VGA_ROWS - 1) * VGA_COLS;
-        }
+        if (cursor >= 80 * 25) vga_scroll();
+        vga_sync_cursor();
+        return;
+    }
+
+    if (c == '\b') {
+        if (cursor > 0) cursor--;
+        VGA_BUFFER[cursor] = (unsigned short)((current_color << 8) | ' ');
         vga_sync_cursor();
         return;
     }
 
     VGA_BUFFER[cursor++] = (unsigned short)((current_color << 8) | (unsigned char)c);
+    if (cursor >= 80 * 25) vga_scroll();
     vga_sync_cursor();
 }
 
