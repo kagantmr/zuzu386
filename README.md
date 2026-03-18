@@ -97,11 +97,7 @@ make debug-gdb GDB_PORT=9000
 
 ## Status
 
-# zuzu386 Roadmap
-
-A learning kernel. Scope is intentionally tiny — no userspace, no threads, no scheduler.
-
----
+zuzu386 has been completed. All major milestones have been implemented, and the kernel successfully boots in QEMU, displaying a welcome message and accepting keyboard input. The MIDI player is functional, with a small set of included songs. 
 
 ## Bootloader
 - [x] 512-byte MBR bootloader in NASM
@@ -143,10 +139,9 @@ A learning kernel. Scope is intentionally tiny — no userspace, no threads, no 
 
 ## If I'm really ambitious... (which I am probably)
 - [x] Heap (free list allocator, kmalloc/kfree)
-- [ ] FAT12
-- [ ] Tiny input loop (read a command, respond)
-- [ ] Boot from USB on real hardware
-- [ ] Memory map via BIOS (INT 0x15 E820) before mode switch
+- [x] Tiny input loop (read a command, respond)
+- [-] Boot from USB on real hardware
+- [-] Memory map via BIOS (INT 0x15 E820) before mode switch
 
 ---
 
@@ -163,4 +158,3 @@ A learning kernel. Scope is intentionally tiny — no userspace, no threads, no 
 
 - [OSDev Wiki](https://wiki.osdev.org)
 - [Nanobyte OS Dev Series](https://www.youtube.com/@nanobyte-dev)
-- *Writing a Simple OS from Scratch* — Nick Blundell
