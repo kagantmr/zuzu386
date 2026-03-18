@@ -15,12 +15,12 @@ This kernel serves as a learning project for x86 architecture, focusing on the b
 
 ## Toolchain
 
-| Tool | Command |
-|---|---|
-| Assembler | `nasm` |
-| Compiler | `x86_64-elf-gcc -m32` |
-| Linker | `x86_64-elf-ld -m elf_i386` |
-| Emulator | `qemu-system-i386` |
+| Tool      | Command                     |
+| --------- | --------------------------- |
+| Assembler | `nasm`                      |
+| Compiler  | `x86_64-elf-gcc -m32`       |
+| Linker    | `x86_64-elf-ld -m elf_i386` |
+| Emulator  | `qemu-system-i386`          |
 
 ---
 
@@ -28,9 +28,13 @@ This kernel serves as a learning project for x86 architecture, focusing on the b
 
 ```
 zuzu386/
-├── boot/        # bootloader (NASM)
+├── arch/
+│   └── x86/
+│       ├── boot/    # x86 bootloader (NASM)
+│       └── linker.ld
 ├── kernel/      # kernel C code
 ├── include/     # headers
+├── scripts/     # helper tooling
 ├── build/       # compiled output (gitignored)
 └── Makefile
 ```
@@ -48,7 +52,7 @@ make
 ```sh
 make run
 # or manually:
-qemu-system-i386 -drive format=raw,file=build/boot.img
+qemu-system-i386 -drive format=raw,file=build/os-image.bin
 ```
 
 ## Debugging (QEMU + GDB)
@@ -114,8 +118,8 @@ A learning kernel. Scope is intentionally tiny — no userspace, no threads, no 
 - [x] Basic color support
 
 ## IRQ
-- [ ] IDT setup
-- [ ] Basic exception handlers (divide by zero, GPF, etc.)
+- [x] IDT setup
+- [x] Basic exception handlers (divide by zero, GPF, etc.)
 - [ ] PIC (8259) remapping
 - [ ] Timer interrupt (IRQ0)
 

@@ -1,6 +1,6 @@
 #ifndef PANIC_H
 #define PANIC_H
 
-_Noreturn void panic(const char *message);
+_Noreturn void panic(const char *fmt, ...);
 
 #endif

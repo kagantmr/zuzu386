@@ -72,26 +72,32 @@ GDB_PORT ?= 1234
 DEBUG_QEMU_FLAGS ?= -S -no-reboot -no-shutdown
 
 BUILD_DIR := build
-BOOT_DIR := boot
+ARCH_DIR := arch/x86
+ARCH_SRC_DIR := arch
+BOOT_DIR := $(ARCH_DIR)/boot
 KERNEL_DIR := kernel
 INCLUDE_DIR := include
 
 # Expected files
 BOOT_SECTOR ?= $(BOOT_DIR)/boot.asm
-LINKER_SCRIPT ?= $(KERNEL_DIR)/linker.ld
+LINKER_SCRIPT ?= $(ARCH_DIR)/linker.ld
 
 # Source discovery
 KERNEL_C_SRCS := $(shell find $(KERNEL_DIR) -type f -name '*.c')
 KERNEL_S_SRCS := $(shell find $(KERNEL_DIR) -type f -name '*.S')
+ARCH_C_SRCS := $(shell find $(ARCH_SRC_DIR) -type f -name '*.c')
+ARCH_S_SRCS := $(shell find $(ARCH_SRC_DIR) -type f -name '*.S')
 # Standalone NASM module(s) linked into the kernel ELF.
 BOOT_ELF_ASM_SRCS ?= $(BOOT_DIR)/kernel_entry.asm
 
 KERNEL_C_OBJS := $(patsubst $(KERNEL_DIR)/%.c,$(BUILD_DIR)/kernel/%.o,$(KERNEL_C_SRCS))
 KERNEL_S_OBJS := $(patsubst $(KERNEL_DIR)/%.S,$(BUILD_DIR)/kernel/%.o,$(KERNEL_S_SRCS))
+ARCH_C_OBJS := $(patsubst $(ARCH_SRC_DIR)/%.c,$(BUILD_DIR)/arch/%.o,$(ARCH_C_SRCS))
+ARCH_S_OBJS := $(patsubst $(ARCH_SRC_DIR)/%.S,$(BUILD_DIR)/arch/%.o,$(ARCH_S_SRCS))
 BOOT_ELF_ASM_OBJS := $(patsubst $(BOOT_DIR)/%.asm,$(BUILD_DIR)/boot/%.o,$(BOOT_ELF_ASM_SRCS))
 
 # Entry object MUST come first so _start lands at the load address.
-KERNEL_OBJS := $(BOOT_ELF_ASM_OBJS) $(KERNEL_C_OBJS) $(KERNEL_S_OBJS)
+KERNEL_OBJS := $(BOOT_ELF_ASM_OBJS) $(ARCH_C_OBJS) $(ARCH_S_OBJS) $(KERNEL_C_OBJS) $(KERNEL_S_OBJS)
 
 ifneq ($(strip $(KERNEL_OBJS)),)
 HAS_KERNEL := 1
@@ -114,7 +120,7 @@ IMAGE_PARTS += $(KERNEL_BIN)
 endif
 
 # Build flags
-CFLAGS ?= -m32 -ffreestanding -fno-pie -fno-stack-protector -nostdlib -nostdinc -Wall -Wextra -O2 -mno-mmx -mno-sse -mno-sse2 -I$(INCLUDE_DIR)
+CFLAGS ?= -m32 -mgeneral-regs-only -ffreestanding -fno-pie -fno-stack-protector -nostdlib -nostdinc -Wall -Wextra -O2 -mno-mmx -mno-sse -mno-sse2 -I$(INCLUDE_DIR)
 ASFLAGS_ELF ?= -f elf32 -I$(BOOT_DIR)/ -I$(INCLUDE_DIR)/ -I$(BUILD_DIR)/
 ASFLAGS_BIN ?= -f bin -I$(BOOT_DIR)/ -I$(INCLUDE_DIR)/ -I$(BUILD_DIR)/
 LDFLAGS_BASE := -m elf_i386
@@ -130,7 +136,7 @@ else
 LDFLAGS := $(LDFLAGS_BASE) -T $(LINKER_SCRIPT)
 endif
 
-.PHONY: all run run-speaker debug debug-gdb qemu-log qemu-log-check bochs bochsdbg clean help usb-list usb-write
+.PHONY: all run debug debug-gdb qemu-log qemu-log-check bochs bochsdbg clean help usb-list usb-write
 
 all: $(OS_IMAGE)
 
@@ -142,6 +148,14 @@ $(BUILD_DIR)/kernel/%.o: $(KERNEL_DIR)/%.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD_DIR)/kernel/%.o: $(KERNEL_DIR)/%.S | $(BUILD_DIR)
+	@mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD_DIR)/arch/%.o: $(ARCH_SRC_DIR)/%.c | $(BUILD_DIR)
+	@mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD_DIR)/arch/%.o: $(ARCH_SRC_DIR)/%.S | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 
@@ -204,9 +218,6 @@ $(BOCHSRC): $(OS_IMAGE) | $(BUILD_DIR)
 		> $@
 
 run: $(OS_IMAGE)
-	$(QEMU) -drive format=raw,file=$(OS_IMAGE)
-
-run-speaker: $(OS_IMAGE)
 	$(QEMU) $(QEMU_PCSPK_FLAGS) -drive format=raw,file=$(OS_IMAGE)
 
 debug: $(OS_IMAGE)
