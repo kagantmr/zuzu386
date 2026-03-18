@@ -2,7 +2,7 @@ org 0x7c00
 bits 16
 
 %define KERNEL_LOAD_SEGMENT 0x1000
-%define KERNEL_ENTRY_POINT  0x10000
+%define KERNEL_ENTRY_POINT  0x100000
 %include "kernel_load.inc"
 
 ; FAT12 HEADER
@@ -44,6 +44,11 @@ main:
     mov sp, 0x7c00 ; stack grows down so it wont overwrite the bootloader
 
 load_kernel:
+    ; Calculate total sectors to load: kernel + ramdisk
+    mov ax, KERNEL_LOAD_SECTORS
+    add ax, RAMDISK_LOAD_SECTORS
+    mov [dap.sectors], ax
+
     ; check if LBA is supported
     mov ah, 0x41
     mov bx, 0x55AA
@@ -52,7 +57,7 @@ load_kernel:
     cmp bx, 0xAA55
     jne .no_lba
 
-    ; use LBA to read the kernel payload immediately after the boot sector
+    ; use LBA to read kernel + ramdisk payload immediately after the boot sector
     mov ah, 0x42
     mov dl, [boot_drive]
     mov si, dap
@@ -63,7 +68,7 @@ load_kernel:
 .no_lba:
     ; CHS fallback: read one sector (works for tiny kernels on old BIOSes)
     mov ah, 0x02
-    mov al, KERNEL_LOAD_SECTORS
+    mov al, byte [dap.sectors]
     mov ch, 0x00
     mov cl, 0x02
     mov dh, 0x00
@@ -96,6 +101,26 @@ protected_mode:
     mov fs, ax
     mov gs, ax
     mov esp, 0x90000
+
+    ; Kernel is read in real mode to 0x10000; move it to 0x100000.
+    ; Use byte count for accuracy
+    mov esi, 0x00010000
+    mov edi, KERNEL_ENTRY_POINT
+    mov ecx, KERNEL_SIZE_BYTES
+    add ecx, 3                  ; Round up to nearest dword
+    shr ecx, 2                  ; Convert to dword count
+    rep movsd
+
+    ; Ramdisk is after kernel in the loaded buffer; move it to 0x200000.
+    ; Calculate ramdisk source: (kernel buffer + KERNEL_SIZE_BYTES)
+    mov esi, 0x00010000
+    add esi, KERNEL_SIZE_BYTES  ; ramdisk starts here in the buffer
+    mov edi, 0x00200000         ; moving to 0x200000
+    mov ecx, RAMDISK_SIZE_BYTES
+    add ecx, 3                  ; Round up to nearest dword
+    shr ecx, 2                  ; Convert to dword count
+    rep movsd
+
     jmp KERNEL_ENTRY_POINT
 
 disk_error:
@@ -107,12 +132,12 @@ disk_hang:
 boot_drive: db 0
 
 dap:
-    db 0x10                 ; size of DAP
-    db 0                    ; reserved
-    dw KERNEL_LOAD_SECTORS  ; sectors to read
-    dw 0x0000               ; buffer offset
-    dw KERNEL_LOAD_SEGMENT  ; buffer segment (loads to 0x10000)
-    dq 1                    ; LBA start sector
+    .size:    db 0x10                 ; size of DAP
+    .reserved: db 0                    ; reserved
+    .sectors: dw KERNEL_LOAD_SECTORS  ; sectors to read (will be updated in load_kernel)
+    .offset:  dw 0x0000               ; buffer offset
+    .segment: dw KERNEL_LOAD_SEGMENT  ; buffer segment (loads to 0x10000)
+    .lba:     dq 1                    ; LBA start sector
 
 times 510 - ($ - $$) db 0 ; padding
 dw 0xAA55

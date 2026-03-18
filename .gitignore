@@ -1,2 +1,4 @@
 midi/
 build/
+.DS_Store
+scripts/__pycache__/midi_to_zuzu.cpython-314.pyc

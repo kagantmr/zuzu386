@@ -6,6 +6,7 @@
 #include "kprintf.h"
 
 static volatile uint64_t ticks = 0;
+static uint32_t tick_hz = 100;
 
 __attribute__((interrupt)) static void timer_interrupt_handler(interrupt_frame_t *frame) {
     (void)frame;
@@ -14,6 +15,11 @@ __attribute__((interrupt)) static void timer_interrupt_handler(interrupt_frame_t
 }
 
 void timer_init(uint32_t frequency) {
+    if (frequency == 0) {
+        frequency = 100;
+    }
+
+    tick_hz = frequency;
     uint32_t divisor = 1193180 / frequency;
     outb(0x43, 0x36); // Command byte: channel 0, access mode lobyte/hibyte, mode 3 (square wave)
     outb(0x40, divisor & 0xFF); // Low byte of divisor
@@ -25,7 +31,11 @@ void timer_init(uint32_t frequency) {
 }
 
 void timer_sleep_ms(uint32_t ms) {
-    uint64_t target = ticks + (ms / 10);
+    uint32_t delta = (ms * tick_hz + 999) / 1000;
+    if (delta == 0) {
+        delta = 1;
+    }
+    uint64_t target = ticks + delta;
     while (ticks < target);
 }
 

@@ -1,5 +1,6 @@
 #include "speaker.h"
 #include "io.h"
+#include "../timer/timer.h"
 
 void speaker_beep(uint32_t freq, uint32_t duration_ms) {
     if (freq == 0) {
@@ -19,8 +20,7 @@ void speaker_beep(uint32_t freq, uint32_t duration_ms) {
     control |= 3; // Set bits 0 and 1 to enable the speaker
     outb(0x61, control);
 
-    // Simple delay loop 
-    for (volatile uint64_t i = 0; i < (uint64_t)duration_ms * 100000; i++);
+    timer_sleep_ms(duration_ms);
 }
 
 void speaker_stop() {

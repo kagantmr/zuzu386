@@ -111,6 +111,10 @@ KERNEL_BIN := $(BUILD_DIR)/kernel.bin
 BOOT_BIN := $(BUILD_DIR)/boot.bin
 OS_IMAGE := $(BUILD_DIR)/os-image.bin
 KERNEL_LOAD_INC := $(BUILD_DIR)/kernel_load.inc
+RAMDISK := $(BUILD_DIR)/ramdisk.zrd
+MIDI_DIR := midi
+MIDI_FILES := $(wildcard $(MIDI_DIR)/*.mid)
+ZUZM_FILES := $(patsubst $(MIDI_DIR)/%.mid,$(BUILD_DIR)/%.zuzm,$(MIDI_FILES))
 USB_BS ?= 1M
 DISK ?=
 
@@ -118,6 +122,7 @@ IMAGE_PARTS := $(BOOT_BIN)
 ifeq ($(HAS_KERNEL),1)
 IMAGE_PARTS += $(KERNEL_BIN)
 endif
+IMAGE_PARTS += $(RAMDISK)
 
 # Build flags
 CFLAGS ?= -m32 -mgeneral-regs-only -ffreestanding -fno-pie -fno-stack-protector -nostdlib -nostdinc -Wall -Wextra -O2 -mno-mmx -mno-sse -mno-sse2 -I. -I$(INCLUDE_DIR) -I$(KERNEL_DIR)
@@ -175,11 +180,17 @@ $(KERNEL_BIN): $(KERNEL_ELF) | $(BUILD_DIR)
 	$(OBJCOPY) -O binary $< $@
 
 ifeq ($(HAS_KERNEL),1)
-$(KERNEL_LOAD_INC): $(KERNEL_BIN) | $(BUILD_DIR)
-	@size=$$(wc -c < "$(KERNEL_BIN)"); \
-	sectors=$$(((size + 511) / 512)); \
-	if [ $$sectors -eq 0 ]; then sectors=1; fi; \
-	printf '%%define KERNEL_LOAD_SECTORS %s\n' "$$sectors" > $@
+$(KERNEL_LOAD_INC): $(KERNEL_BIN) $(RAMDISK) | $(BUILD_DIR)
+	@ksize=$$(wc -c < "$(KERNEL_BIN)"); \
+	ksectors=$$(((ksize + 511) / 512)); \
+	if [ $$ksectors -eq 0 ]; then ksectors=1; fi; \
+	rsize=$$(wc -c < "$(RAMDISK)"); \
+	rsectors=$$(((rsize + 511) / 512)); \
+	if [ $$rsectors -eq 0 ]; then rsectors=1; fi; \
+	(printf '%%define KERNEL_LOAD_SECTORS %s\n' "$$ksectors"; \
+	 printf '%%define KERNEL_SIZE_BYTES %s\n' "$$ksize"; \
+	 printf '%%define RAMDISK_LOAD_SECTORS %s\n' "$$rsectors"; \
+	 printf '%%define RAMDISK_SIZE_BYTES %s\n' "$$rsize") > $@
 else
 $(KERNEL_LOAD_INC): | $(BUILD_DIR)
 	@printf '%%define KERNEL_LOAD_SECTORS 0\n' > $@
@@ -187,6 +198,15 @@ endif
 
 $(BOOT_BIN): $(BOOT_SECTOR) $(KERNEL_LOAD_INC) | $(BUILD_DIR)
 	$(NASM) $(ASFLAGS_BIN) $< -o $@
+
+# Convert MIDI files to binary format
+$(BUILD_DIR)/%.zuzm: $(MIDI_DIR)/%.mid | $(BUILD_DIR)
+	@python3 -c "import mido" 2>/dev/null && \
+		python3 scripts/midi_to_zuzu.py $< $@ || \
+		python3 scripts/zuzm_gen.py $@ 120
+
+$(RAMDISK): $(ZUZM_FILES) | $(BUILD_DIR)
+	python3 scripts/build_zrd.py $@ $(ZUZM_FILES)
 
 $(OS_IMAGE): $(IMAGE_PARTS) | $(BUILD_DIR)
 	cat $^ > $@

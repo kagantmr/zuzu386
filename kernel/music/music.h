@@ -1,3 +1,6 @@
+#ifndef MUSIC_H
+#define MUSIC_H
+
 #include "stdint.h"
 #include "stddef.h"
 
@@ -128,3 +131,5 @@ typedef struct {
 
 void play_note(const note_t *note);
 void play_melody(const song_t *song);
+
+#endif /* MUSIC_H */

@@ -142,6 +142,8 @@ A learning kernel. Scope is intentionally tiny — no userspace, no threads, no 
 - [x] Echo typed characters to screen
 
 ## If I'm really ambitious... (which I am probably)
+- [x] Heap (free list allocator, kmalloc/kfree)
+- [ ] FAT12
 - [ ] Tiny input loop (read a command, respond)
 - [ ] Boot from USB on real hardware
 - [ ] Memory map via BIOS (INT 0x15 E820) before mode switch

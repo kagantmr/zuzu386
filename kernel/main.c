@@ -12,33 +12,13 @@
 #include "timer/timer.h"    
 #include "keyboard/keyboard.h"  
 #include "isr/exceptions.h"
+#include "mm/heap.h"
 #include "arch/x86/pic/pic.h"
+#include "zrd/zrd.h"
+#include "arch/x86/symbols.h"
+#include "music/music_loader.h"
+#include "mem.h"
 
-void play_zuzu(void) {
-    static const note_t notes[] = {
-        {NOTE_C4, 4},
-        {NOTE_DS4, 4},
-        {NOTE_G3, 4},
-        {NOTE_C4, 4},
-        {NOTE_E4, 4},
-        {NOTE_C4, 4},
-        {NOTE_E4, 4},
-        {NOTE_C5, 4},
-        {NOTE_G4, 4},
-        {NOTE_C5, 4},
-        {NOTE_G4, 4},
-        {NOTE_E4, 4},
-        {NOTE_E5, 16},
-    };
-
-    static const song_t song = {
-        .notes  = notes,
-        .length = 13,
-        .tempo  = 80,
-    };
-
-    play_melody(&song);
-}
 
 _Noreturn void kmain(void) {
     vga_clear();
@@ -62,17 +42,69 @@ _Noreturn void kmain(void) {
     i686_idt_enablehandler(14);
     i686_idt_enablehandler(255); 
 
+    heap_init();
+    zrd_init((void*)&_ramdisk_start);
     pic_remap();
-    timer_init(100); // 100 Hz timer frequency
+    timer_init(1000); // 1000 Hz for finer timing resolution in audio playback.
     kprintf("Welcome to Zuzu386 (version %s)!\n", Z386_VERSION);
     //__asm__ volatile ("int $0"); // Controlled exception test: divide-by-zero vector.
     keyboard_init();
 
     __asm__ volatile ("sti"); // Enable interrupts
-    while (1) {
-    if (keyboard_haschar()) {
-        char c = keyboard_getchar();
-        vga_putc(c);
+
+    // Load and play music from ramdisk
+    void *music_data = zrd_open("boot.zuzm");
+    if (music_data) {
+        uint32_t music_size = zrd_size("boot.zuzm");
+        zuzm_song_t *song = zuzm_load(music_data, music_size);
+        if (song) {
+            zuzm_play(song);
+            zuzm_free(song);
+        }
     }
-}
+
+    char file[256];
+    size_t file_idx = 0;
+
+    while (1) {
+        if (keyboard_haschar()) {
+            char c = keyboard_getchar();
+            if (c == '\n' || c == '\r') {
+                file[file_idx] = '\0';
+                vga_putc('\n');
+
+                if (file_idx == 0) {
+                    continue;
+                }
+
+                void *data = zrd_open(file);
+                if (data) {
+                    uint32_t size = zrd_size(file);
+                    kprintf("Opened '%s' (%u bytes)\n", file, size);
+                    // For demo, try loading as music
+                    zuzm_song_t *song = zuzm_load(data, size);
+                    if (song) {
+                        kprintf("Playing '%s'...\n", file);
+                        zuzm_play(song);
+                        zuzm_free(song);
+                    } else {
+                        kprintf("File '%s' is not a valid music file.\n", file);
+                    }
+                } else {
+                    kprintf("File '%s' not found in ramdisk.\n", file);
+                }
+                file_idx = 0;
+            } else if (c == '\b') {
+                if (file_idx > 0) {
+                    file_idx--;
+                    vga_putc('\b');
+                    vga_putc(' ');
+                    vga_putc('\b');
+                }
+            } else if (file_idx < sizeof(file) - 1) {
+                file[file_idx++] = c;
+                vga_putc(c); // echo input
+            }
+        }
+    }
 }
