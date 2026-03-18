@@ -19,7 +19,7 @@ void zrd_init(void *addr) {
     }
     // 2. cast pointer to file entries and read into in-memory data structure
     zrd_entries = (zrd_entry_t *)((uint8_t *)addr + sizeof(zrd_header_t));
-    kprintf("[ZRD] init: Found ramdisk at %p with %d files\n", addr, zrd_header->count);
+    //kprintf("[ZRD] init: Found ramdisk at %p with %d files\n", addr, zrd_header->count);
     zrd_stat();
 }
 

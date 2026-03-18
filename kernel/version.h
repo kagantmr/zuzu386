@@ -1,6 +1,6 @@
 #ifndef Z386_VERSION_H
 #define Z386_VERSION_H
 
-#define Z386_VERSION "0.1.0"
+#define Z386_VERSION "1.0.0"
 
 #endif

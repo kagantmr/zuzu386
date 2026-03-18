@@ -97,7 +97,7 @@ make debug-gdb GDB_PORT=9000
 
 ## Status
 
-zuzu386 has been completed. All major milestones have been implemented, and the kernel successfully boots in QEMU, displaying a welcome message and accepting keyboard input. The MIDI player is functional, with a small set of included songs. 
+zuzu386 has been completed. All major milestones have been implemented, and the kernel successfully boots in QEMU, displaying a welcome message and accepting keyboard input. The MIDI player is functional, with a small set of included songs. A minimal shell allows playing songs by name and checking the kernel version.
 
 ## Bootloader
 - [x] 512-byte MBR bootloader in NASM
@@ -140,8 +140,8 @@ zuzu386 has been completed. All major milestones have been implemented, and the 
 ## If I'm really ambitious... (which I am probably)
 - [x] Heap (free list allocator, kmalloc/kfree)
 - [x] Tiny input loop (read a command, respond)
-- [-] Boot from USB on real hardware
-- [-] Memory map via BIOS (INT 0x15 E820) before mode switch
+- [x] Simple shell
+
 
 ---
 

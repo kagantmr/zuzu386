@@ -2,6 +2,7 @@
 #include "kprintf.h"
 #include "snprintf.h"
 #include "string.h"
+#include "ctype.h"
 #include "vga/vga.h"
 #include "splash.h"
 #include "core/panic.h"
@@ -18,6 +19,91 @@
 #include "arch/x86/symbols.h"
 #include "music/music_loader.h"
 #include "mem.h"
+
+static char *skip_spaces(char *s) {
+    while (*s && isspace((unsigned char)*s)) {
+        s++;
+    }
+    return s;
+}
+
+static void rstrip_spaces(char *s) {
+    size_t len = strlen(s);
+    while (len > 0 && isspace((unsigned char)s[len - 1])) {
+        s[len - 1] = '\0';
+        len--;
+    }
+}
+
+static int shell_play_file(const char *name) {
+    void *data = zrd_open(name);
+    if (!data) {
+        kprintf("File '%s' not found in ramdisk.\n", name);
+        return 0;
+    }
+
+    uint32_t size = zrd_size(name);
+    zuzm_song_t *song = zuzm_load(data, size);
+    if (!song) {
+        kprintf("File '%s' is not a valid music file.\n", name);
+        return 0;
+    }
+
+    kprintf("Playing '%s'...\n", name);
+    zuzm_play(song);
+    zuzm_free(song);
+    return 1;
+}
+
+static void shell_print_help(void) {
+    kprintf("Commands:\n");
+    kprintf("  help           Show this help\n");
+    kprintf("  ls             List ramdisk files\n");
+    kprintf("  play <file>    Play a .zuzm file\n");
+    kprintf("  version        Show kernel version\n");
+    kprintf("  clear          Clear screen\n");
+    kprintf("Tip: typing a filename directly also tries to play it.\n");
+}
+
+static void shell_run_line(char *line) {
+    rstrip_spaces(line);
+    char *cmd = skip_spaces(line);
+
+    if (*cmd == '\0') {
+        return;
+    }
+
+    char *arg = cmd;
+    while (*arg && !isspace((unsigned char)*arg)) {
+        arg++;
+    }
+
+    if (*arg) {
+        *arg = '\0';
+        arg = skip_spaces(arg + 1);
+    } else {
+        arg = arg;
+    }
+
+    if (strcmp(cmd, "help") == 0) {
+        shell_print_help();
+    } else if (strcmp(cmd, "ls") == 0) {
+        zrd_stat();
+    } else if (strcmp(cmd, "play") == 0) {
+        if (*arg == '\0') {
+            kprintf("Usage: play <file>\n");
+        } else {
+            shell_play_file(arg);
+        }
+    } else if (strcmp(cmd, "version") == 0) {
+        kprintf("zuzu386 version %s\n", Z386_VERSION);
+    } else if (strcmp(cmd, "clear") == 0) {
+        vga_clear();
+        splash();
+    } else {
+        shell_play_file(cmd);
+    }
+}
 
 
 _Noreturn void kmain(void) {
@@ -53,15 +139,10 @@ _Noreturn void kmain(void) {
     __asm__ volatile ("sti"); // Enable interrupts
 
     // Load and play music from ramdisk
-    void *music_data = zrd_open("boot.zuzm");
-    if (music_data) {
-        uint32_t music_size = zrd_size("boot.zuzm");
-        zuzm_song_t *song = zuzm_load(music_data, music_size);
-        if (song) {
-            zuzm_play(song);
-            zuzm_free(song);
-        }
-    }
+    shell_play_file("boot.zuzm");
+
+    shell_print_help();
+    kprintf("zuzu> ");
 
     char file[256];
     size_t file_idx = 0;
@@ -74,26 +155,13 @@ _Noreturn void kmain(void) {
                 vga_putc('\n');
 
                 if (file_idx == 0) {
+                    kprintf("zuzu> ");
                     continue;
                 }
 
-                void *data = zrd_open(file);
-                if (data) {
-                    uint32_t size = zrd_size(file);
-                    kprintf("Opened '%s' (%u bytes)\n", file, size);
-                    // For demo, try loading as music
-                    zuzm_song_t *song = zuzm_load(data, size);
-                    if (song) {
-                        kprintf("Playing '%s'...\n", file);
-                        zuzm_play(song);
-                        zuzm_free(song);
-                    } else {
-                        kprintf("File '%s' is not a valid music file.\n", file);
-                    }
-                } else {
-                    kprintf("File '%s' not found in ramdisk.\n", file);
-                }
+                shell_run_line(file);
                 file_idx = 0;
+                kprintf("zuzu> ");
             } else if (c == '\b') {
                 if (file_idx > 0) {
                     file_idx--;
